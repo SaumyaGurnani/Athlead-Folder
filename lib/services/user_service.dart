@@ -68,6 +68,7 @@ class UserService {
           certifications: [],
           following: [],
           followers: [],
+          connections: [],
           createdAt: DateTime.now(),
           updatedAt: DateTime.now(),
         );
@@ -113,6 +114,7 @@ class UserService {
         certifications: [],
         following: [],
         followers: [],
+        connections: [],
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
@@ -212,6 +214,72 @@ class UserService {
         _firestore.collection('users').doc(targetUserId),
         {
           'followers': FieldValue.arrayRemove([currentUserId]),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+      );
+      
+      await batch.commit();
+      
+      // Update cache for both users
+      _invalidateCache(currentUserId);
+      _invalidateCache(targetUserId);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // Connect with user
+  Future<void> connectWithUser(String currentUserId, String targetUserId) async {
+    try {
+      final batch = _firestore.batch();
+      
+      // Add to connections list for current user
+      batch.update(
+        _firestore.collection('users').doc(currentUserId),
+        {
+          'connections': FieldValue.arrayUnion([targetUserId]),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+      );
+      
+      // Add to connections list for target user
+      batch.update(
+        _firestore.collection('users').doc(targetUserId),
+        {
+          'connections': FieldValue.arrayUnion([currentUserId]),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+      );
+      
+      await batch.commit();
+      
+      // Update cache for both users
+      _invalidateCache(currentUserId);
+      _invalidateCache(targetUserId);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  // Disconnect from user
+  Future<void> disconnectFromUser(String currentUserId, String targetUserId) async {
+    try {
+      final batch = _firestore.batch();
+      
+      // Remove from connections list for current user
+      batch.update(
+        _firestore.collection('users').doc(currentUserId),
+        {
+          'connections': FieldValue.arrayRemove([targetUserId]),
+          'updatedAt': FieldValue.serverTimestamp(),
+        },
+      );
+      
+      // Remove from connections list for target user
+      batch.update(
+        _firestore.collection('users').doc(targetUserId),
+        {
+          'connections': FieldValue.arrayRemove([currentUserId]),
           'updatedAt': FieldValue.serverTimestamp(),
         },
       );

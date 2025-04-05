@@ -10,6 +10,7 @@ class PostProvider extends ChangeNotifier {
   bool _isLoading = false;
   String? _error;
   StreamSubscription<List<PostModel>>? _feedSubscription;
+  StreamSubscription<List<PostModel>>? _userPostsSubscription;
 
   List<PostModel> get posts => _posts;
   bool get isLoading => _isLoading;
@@ -30,6 +31,14 @@ class PostProvider extends ChangeNotifier {
         notifyListeners();
       },
     );
+  }
+
+  // Get user posts
+  Stream<List<PostModel>> getUserPosts(String userId) {
+    // Cancel existing subscription if any
+    _userPostsSubscription?.cancel();
+    
+    return _postService.getUserPosts(userId);
   }
 
   // Create post

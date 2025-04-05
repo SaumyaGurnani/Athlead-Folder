@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../models/user_model.dart';
+import '../services/user_service.dart';
 import '../providers/user_provider.dart';
 import 'events_screen.dart';
 import 'login_screen.dart';
+import 'user_profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -153,39 +156,146 @@ class PostCard extends StatelessWidget {
   }
 }
 
-class ExploreTab extends StatelessWidget {
+class ExploreTab extends StatefulWidget {
   const ExploreTab({super.key});
 
   @override
+  State<ExploreTab> createState() => _ExploreTabState();
+}
+
+class _ExploreTabState extends State<ExploreTab> {
+  final TextEditingController _searchController = TextEditingController();
+  Stream<List<UserModel>>? _usersStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(_onSearchChanged);
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
+  void _onSearchChanged() {
+    final query = _searchController.text.trim();
+    if (query.isEmpty) {
+      setState(() => _usersStream = null);
+      return;
+    }
+
+    final userProvider = Provider.of<UserService>(context, listen: false);
+    setState(() => _usersStream = userProvider.searchUsers(query));
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return GridView.builder(
-      padding: const EdgeInsets.all(8.0),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 3,
-        crossAxisSpacing: 8.0,
-        mainAxisSpacing: 8.0,
-      ),
-      itemCount: 30, // TODO: Replace with actual content
-      itemBuilder: (context, index) {
-        return const ExploreItem();
-      },
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: TextField(
+            controller: _searchController,
+            decoration: InputDecoration(
+              hintText: 'Search users...',
+              prefixIcon: const Icon(Icons.search),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              filled: true,
+              fillColor: Colors.grey[100],
+            ),
+          ),
+        ),
+        Expanded(
+          child: _usersStream == null
+              ? const Center(
+                  child: Text('Start typing to search for users'),
+                )
+              : StreamBuilder<List<UserModel>>(
+                  stream: _usersStream,
+                  builder: (context, snapshot) {
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Text(
+                          'Error: ${snapshot.error}',
+                          style: const TextStyle(color: Colors.red),
+                        ),
+                      );
+                    }
+
+                    if (!snapshot.hasData) {
+                      return const Center(
+                        child: CircularProgressIndicator(),
+                      );
+                    }
+
+                    final users = snapshot.data!;
+                    if (users.isEmpty) {
+                      return const Center(
+                        child: Text('No users found'),
+                      );
+                    }
+
+                    return ListView.builder(
+                      itemCount: users.length,
+                      itemBuilder: (context, index) {
+                        final user = users[index];
+                        return _UserListItem(user: user);
+                      },
+                    );
+                  },
+                ),
+        ),
+      ],
     );
   }
 }
 
-class ExploreItem extends StatelessWidget {
-  const ExploreItem({super.key});
+class _UserListItem extends StatelessWidget {
+  final UserModel user;
+
+  const _UserListItem({required this.user});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.grey[300],
-        borderRadius: BorderRadius.circular(8.0),
+    final currentUser = Provider.of<UserProvider>(context).currentUser;
+    final isCurrentUser = currentUser?.id == user.id;
+    final isFollowing = currentUser?.following.contains(user.id) ?? false;
+
+    return ListTile(
+      leading: CircleAvatar(
+        backgroundImage: user.profileImage != null
+            ? NetworkImage(user.profileImage!)
+            : null,
+        child: user.profileImage == null
+            ? const Icon(Icons.person)
+            : null,
       ),
-      child: const Center(
-        child: Icon(Icons.image),
-      ),
+      title: Text(user.name),
+      subtitle: Text(user.userType.toString().split('.').last),
+      trailing: isCurrentUser
+          ? null
+          : TextButton(
+              onPressed: () {
+                final userProvider = Provider.of<UserProvider>(context, listen: false);
+                if (isFollowing) {
+                  userProvider.unfollowUser(user.id);
+                } else {
+                  userProvider.followUser(user.id);
+                }
+              },
+              child: Text(isFollowing ? 'Unfollow' : 'Follow'),
+            ),
+      onTap: () {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => UserProfileScreen(user: user),
+          ),
+        );
+      },
     );
   }
 }
@@ -297,84 +407,6 @@ class _ProfileTabState extends State<ProfileTab> {
       return const Center(child: Text('No user data available'));
     }
 
-    return RefreshIndicator(
-      onRefresh: _refreshProfile,
-      child: SingleChildScrollView(
-        physics: const AlwaysScrollableScrollPhysics(),
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
-            Stack(
-              children: [
-                CircleAvatar(
-                  radius: 50,
-                  backgroundImage: user.profileImage != null
-                      ? NetworkImage(user.profileImage!)
-                      : null,
-                  child: user.profileImage == null
-                      ? const Icon(Icons.person, size: 50)
-                      : null,
-                ),
-                if (_isRefreshing)
-                  const Positioned(
-                    right: 0,
-                    bottom: 0,
-                    child: CircularProgressIndicator(),
-                  ),
-              ],
-            ),
-            const SizedBox(height: 16),
-            Text(
-              user.name,
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              user.userType.toString().split('.').last,
-              style: Theme.of(context).textTheme.bodyLarge,
-            ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _buildStatColumn('Posts', '0'),
-                _buildStatColumn('Followers', user.followers.length.toString()),
-                _buildStatColumn('Following', user.following.length.toString()),
-              ],
-            ),
-            const SizedBox(height: 24),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: ElevatedButton.icon(
-                onPressed: _signOut,
-                icon: const Icon(Icons.logout),
-                label: const Text('Sign Out'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red,
-                  foregroundColor: Colors.white,
-                  minimumSize: const Size(double.infinity, 48),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatColumn(String label, String value) {
-    return Column(
-      children: [
-        Text(
-          value,
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        Text(label),
-      ],
-    );
+    return UserProfileScreen(user: user);
   }
 } 

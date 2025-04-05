@@ -205,6 +205,38 @@ class UserProvider extends ChangeNotifier {
     }
   }
 
+  Future<void> connectWithUser(String targetUserId) async {
+    if (_currentUser == null) return;
+
+    try {
+      await _userService.connectWithUser(_currentUser!.id, targetUserId);
+      _currentUser = _currentUser!.copyWith(
+        connections: [..._currentUser!.connections, targetUserId],
+      );
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
+  Future<void> disconnectFromUser(String targetUserId) async {
+    if (_currentUser == null) return;
+
+    try {
+      await _userService.disconnectFromUser(_currentUser!.id, targetUserId);
+      _currentUser = _currentUser!.copyWith(
+        connections: _currentUser!.connections
+            .where((id) => id != targetUserId)
+            .toList(),
+      );
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      notifyListeners();
+    }
+  }
+
   Future<void> addAchievement(String achievement) async {
     if (_currentUser == null) return;
 

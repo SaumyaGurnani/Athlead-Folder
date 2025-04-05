@@ -14,6 +14,7 @@ class UserModel {
   final List<String> certifications;
   final List<String> following;
   final List<String> followers;
+  final List<String> connections;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -29,6 +30,7 @@ class UserModel {
     required this.certifications,
     required this.following,
     required this.followers,
+    required this.connections,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -75,6 +77,7 @@ class UserModel {
       certifications: safeListConversion(data['certifications']),
       following: safeListConversion(data['following']),
       followers: safeListConversion(data['followers']),
+      connections: safeListConversion(data['connections']),
       createdAt: safeTimestampConversion(data['createdAt']),
       updatedAt: safeTimestampConversion(data['updatedAt']),
     );
@@ -92,6 +95,7 @@ class UserModel {
       'certifications': certifications,
       'following': following,
       'followers': followers,
+      'connections': connections,
       'createdAt': Timestamp.fromDate(createdAt),
       'updatedAt': Timestamp.fromDate(updatedAt),
     };
@@ -109,6 +113,7 @@ class UserModel {
     List<String>? certifications,
     List<String>? following,
     List<String>? followers,
+    List<String>? connections,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -124,6 +129,7 @@ class UserModel {
       certifications: certifications ?? this.certifications,
       following: following ?? this.following,
       followers: followers ?? this.followers,
+      connections: connections ?? this.connections,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
