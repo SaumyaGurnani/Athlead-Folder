@@ -6,6 +6,7 @@ import 'providers/user_provider.dart';
 import 'providers/post_provider.dart';
 import 'providers/event_provider.dart';
 import 'screens/onboarding_screen.dart';
+import 'screens/injury_management_screen.dart'; // ✅ Import added
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -77,7 +78,7 @@ class AuthenticationWrapper extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final userProvider = Provider.of<UserProvider>(context);
-    
+
     if (userProvider.isLoading) {
       return const Scaffold(
         body: Center(
@@ -93,7 +94,7 @@ class AuthenticationWrapper extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                'Error: ${userProvider.error}',
+                'Error: \${userProvider.error}',
                 style: const TextStyle(color: Colors.red),
                 textAlign: TextAlign.center,
               ),
@@ -112,4 +113,4 @@ class AuthenticationWrapper extends StatelessWidget {
 
     return const OnboardingScreen();
   }
-} 
+}
